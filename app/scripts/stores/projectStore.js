@@ -37,6 +37,37 @@ var ProjectStore = Reflux.createStore({
         this.users = [];
         this.userKey = {};
         this.versionModal = false;
+
+        this.sort = false;
+    },
+
+    sortChildren(filter) {
+        this.sort = !this.sort;
+        if(this.sort) {
+            this.children = this.children.sort((a, b) => {
+                if (filter === 'name') return (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0);
+                if (filter === 'date') return (a.audit.created_on > b.audit.created_on) ? 1 : ((b.audit.created_on > a.audit.created_on) ? -1 : 0);
+                if (filter === 'size') {
+                    if (a.upload && b.upload) {
+                        return (a.upload.size > b.upload.size) ? 1 : ((b.upload.size > a.upload.size) ? -1 : 0)
+                    }
+                }
+            });
+        } else {
+            this.children = this.children.sort(function (a, b) {
+                if (filter === 'name') return (a.name < b.name) ? 1 : ((b.name < a.name) ? -1 : 0);
+                if (filter === 'date') return (a.audit.created_on < b.audit.created_on) ? 1 : ((b.audit.created_on < a.audit.created_on) ? -1 : 0);
+                if (filter === 'size') {
+                    if (a.upload && b.upload) {
+                        return (a.upload.size < b.upload.size) ? 1 : ((b.upload.size < a.upload.size) ? -1 : 0)
+                    }
+                }
+            });
+        }
+        this.trigger({
+            sort: this.sort,
+            children: this.children
+        })
     },
 
     getFileVersions() {

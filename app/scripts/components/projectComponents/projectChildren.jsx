@@ -16,6 +16,14 @@ import Card from 'material-ui/lib/card';
 import LinearProgress from 'material-ui/lib/linear-progress';
 import RaisedButton from 'material-ui/lib/raised-button';
 
+import FlatButton from 'material-ui/lib/flat-button';
+import IconMenu from 'material-ui/lib/menus/icon-menu';
+import MenuItem from 'material-ui/lib/menus/menu-item';
+import IconButton from 'material-ui/lib/icon-button';
+import ContentFilter from 'material-ui/lib/svg-icons/content/filter-list';
+import Close from 'material-ui/lib/svg-icons/navigation/close';
+import Divider from 'material-ui/lib/divider';
+
 class ProjectChildren extends React.Component {
 
     constructor() {
@@ -85,7 +93,7 @@ class ProjectChildren extends React.Component {
                                          style={styles.title}>{children.name.length > 82 ? children.name.substring(0, 82) + '...' : children.name}</div>
                                 </div>
                                 <div className="item-subtitle mdl-color-text--grey-600">created by: { children.audit.created_by.full_name }</div>
-                                <div className="item-subtitle mdl-color-text--grey-600">last updated: {children.audit.last_updated_on ? new Date(children.audit.last_updated_on).toString() : 'n/a'}</div>
+                                <div className="item-subtitle mdl-color-text--grey-600">created on: {children.audit.created_on ? new Date(children.audit.created_on).toString() : null}</div>
                             </div>
                         </a>
                     </li>
@@ -115,7 +123,7 @@ class ProjectChildren extends React.Component {
                                          style={styles.title}>{children.name.length > 82 ? children.name.substring(0, 82) + '...' : children.name}</div>
                                 </div>
                                 <div className="item-subtitle mdl-color-text--grey-600">size: {BaseUtils.bytesToSize(children.upload.size)}</div>
-                                <div className="item-subtitle mdl-color-text--grey-600">last updated: {children.audit.last_updated_on ? new Date(children.audit.last_updated_on).toString() : 'n/a'}</div>
+                                <div className="item-subtitle mdl-color-text--grey-600">created on: {children.audit.created_on ? new Date(children.audit.created_on).toString() : 'n/a'}</div>
                             </div>
                         </a>
                     </li>
@@ -137,6 +145,20 @@ class ProjectChildren extends React.Component {
                 { this.props.uploads || this.props.loading ? <Loaders {...this.props}/> : null }
                 <div className="mdl-cell mdl-cell--12-col content-block" style={styles.list}>
                     <div className="list-block list-block-search searchbar-found media-list">
+                        <div className="list-block-label" style={{margin: '-40px 0px 0px 0px'}}>
+                            <IconMenu
+                                iconButtonElement={<IconButton><ContentFilter style={{float: 'right'}}/></IconButton>}
+                                anchorOrigin={{horizontal: 'left', vertical: 'top'}}
+                                targetOrigin={{horizontal: 'left', vertical: 'bottom'}}
+                                closeOnItemTouchTap={false}
+                                >
+                                <MenuItem primaryText="Sort By" disabled={true} style={{color: 'black', lineHeight: 1}} />
+                                <Divider />
+                                <MenuItem primaryText="Name" onTouchTap={() => this.sort('name')} />
+                                <MenuItem primaryText="Size" onTouchTap={() => this.sort('size')} />
+                                <MenuItem primaryText="Date Created" onTouchTap={() => this.sort('date')} />
+                            </IconMenu>
+                        </div>
                         <ul>
                             {projectChildren}
                         </ul>
@@ -153,6 +175,10 @@ class ProjectChildren extends React.Component {
                 </div>
             </div>
         );
+    }
+
+    sort(filter){
+        ProjectActions.sortChildren(filter)
     }
 
     change() {

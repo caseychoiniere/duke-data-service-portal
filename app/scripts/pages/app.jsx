@@ -123,7 +123,7 @@ class App extends React.Component {
     }
 
     handleRequestClose () {
-
+        // For some reason get error when removed
     };
 }
 

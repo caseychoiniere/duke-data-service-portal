@@ -48,8 +48,9 @@ class ProjectDetails extends React.Component {
                            className="external mdl-color-text--grey-800"><i
                             className="material-icons mdl-color-text--grey-800" style={styles.backIcon}>keyboard_backspace</i>Back</a>
                     </div>
-                    <div className="mdl-cell mdl-cell--3-col mdl-cell--4-col-tablet mdl-cell--4-col-phone"
+                    <div className="mdl-cell mdl-cell--4-col mdl-cell--4-col-tablet mdl-cell--4-col-phone"
                          style={styles.detailsTitle}>
+
                         <h4>{ projectName }</h4>
                     </div>
                     <div className="mdl-cell mdl-cell--3-col mdl-cell--8-col-tablet" style={styles.details}>
