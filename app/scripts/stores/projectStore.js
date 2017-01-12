@@ -82,6 +82,7 @@ var ProjectStore = Reflux.createStore({
         this.showBatchOps = false;
         this.showSearch = false;
         this.tagLabels = [];
+        this.tagsToAdd = [];
         this.templateProperties = [];
         this.toggleModal = {open: false, id: null};
         this.toggleProv = false;
@@ -841,6 +842,13 @@ var ProjectStore = Reflux.createStore({
         this.openTagManager = !this.openTagManager;
         this.trigger({
             openTagManager: this.openTagManager
+        })
+    },
+
+    defineTagsToAdd(tags) {
+        this.tagsToAdd = tags;
+        this.trigger({
+            tagsToAdd: this.tagsToAdd
         })
     },
 
