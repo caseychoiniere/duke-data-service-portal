@@ -273,8 +273,8 @@ const transportLayer = {
     getDownloadUrl: (id, kind) => {
         return fetch(`${DDS_BASE_URI+apiPrefix+kind+id}/url`, getFetchParams('get', authStore.appConfig.apiToken))
     },
-    getChildren: (id, path, page) => {
-        return fetch(`${DDS_BASE_URI+apiPrefix+path+id+Path.CHILDREN}?page=${page}&per_page=25`, getFetchParams('get', authStore.appConfig.apiToken))
+    getChildren: (id, path, page, perPage) => {
+        return fetch(`${DDS_BASE_URI+apiPrefix+path+id+Path.CHILDREN}?page=${page}&per_page=${perPage}`, getFetchParams('get', authStore.appConfig.apiToken))
     },
     getUser: (id) => {
         return fetch(`${DDS_BASE_URI+apiPrefix}current_user`, getFetchParams('get', authStore.appConfig.apiToken))

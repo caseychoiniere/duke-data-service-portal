@@ -172,6 +172,12 @@ export class MainStore {
         this.versionModal = false;
         this.warnUserBeforeLeavingPage = false;
 
+        this.hierarchy = {};
+        this.children = [];
+        this.ddsFolderChildren = {};
+
+        this.completedFiles = [];
+
         this.totalUploads = {inProcess: 0, complete: 0};
         this.transportLayer = transportLayer;
     }
@@ -332,14 +338,14 @@ export class MainStore {
         })
     }
 
-    @action deleteFolder(id, path, parentId) {
+    @action deleteFolder(id, parentId, path) {
         this.loading = true;
         this.transportLayer.deleteFolder(id)
             .then(this.checkResponse)
             .then(response => {})
             .then(() => {
                 this.addToast('Folder(s) Deleted!');
-                this.deleteItemSuccess(id, path, parentId)
+                this.deleteItemSuccess(id, parentId, path)
             }).catch((ex) => {
             this.addToast('Folder Deleted Failed!');
             this.handleErrors(ex)
@@ -615,7 +621,7 @@ export class MainStore {
     @action processFilesToUploadDepthFirst(files, parentId, parentKind, projectId) {
         this.loading = true;
         let fileList = files.map((file) => { return {path: file.fullPath, filename: file.name , file: file} });
-        const hierarchy = {}; // {folder_name} = { name: <name of folder>, children: {...just like hierarchy...}, files: [] }
+        this.hierarchy = {}; // {folder_name} = { name: <name of folder>, children: {...just like hierarchy...}, files: [] }
         // build tree
         fileList.map(file => {
             const paths = file.path.split('/').slice(0, -1);
@@ -623,14 +629,14 @@ export class MainStore {
             // builds the hierarchy of folders.
             paths.map(path => {
                 if (!parentFolder) {
-                    if (!hierarchy[path]) {
-                        hierarchy[path] = {
+                    if (!this.hierarchy[path]) {
+                        this.hierarchy[path] = {
                             name: path,
                             children: {},
                             files: [],
                         };
                     }
-                    parentFolder = hierarchy[path]
+                    parentFolder = this.hierarchy[path]
                 } else {
                     if (!parentFolder.children[path]) {
                         parentFolder.children[path] = {
@@ -645,22 +651,57 @@ export class MainStore {
             parentFolder.files.push(file);
         });
 
-        Object.keys(hierarchy).map(folderName => this.uploadFilesDepthFirst(parentId, parentKind, hierarchy[folderName], projectId));
+        Object.keys(this.hierarchy).map(folderName => this.uploadFilesDepthFirst(parentId, parentKind, this.hierarchy[folderName], projectId, this.listItems));
     }
 
-    @action uploadFilesDepthFirst(parentId, parentKind, folderInfo, projectId) {
-        this.transportLayer.addFolder(parentId, parentKind, folderInfo.name)
-            .then()
-            .then(response => response.json())
-            .then((ddsFolder) => {
-                Object.keys(folderInfo.children).forEach(childFolderName => this.uploadFilesDepthFirst(ddsFolder.id, ddsFolder.kind, folderInfo.children[childFolderName], projectId));
-                folderInfo.files.map(file => {
-                    this.startUpload(projectId, file.file, ddsFolder.id, ddsFolder.kind, null, null, this.tagsToAdd);
-                });
-            }).catch((ex) => {
-            this.addToast('Failed to add a new folder');
-            this.handleErrors(ex)
-        })
+    @action uploadFilesDepthFirst(parentId, parentKind, folderInfo, projectId, children) {
+        if(children.length) {
+            children.map((f) => {
+                if (f.kind === 'dds-folder') {
+                    f.name !== folderInfo.name ? this.transportLayer.addFolder(parentId, parentKind, folderInfo.name) : this.transportLayer.getEntity(f.id, Path.FOLDER)
+                        .then(this.checkResponse)
+                        .then(response => response.json())
+                        .then((ddsFolder) => {
+                            let perPage = '1000';
+                            let page = 1;
+                            this.transportLayer.getChildren(ddsFolder.id, Path.FOLDER, page, perPage)
+                                    .then(this.checkResponse)
+                                    .then(response => response.json())
+                                    .then((json) => {
+                                        this.ddsFolderChildren[ddsFolder.name] = json.results;
+                                        Object.keys(folderInfo.children).forEach(childFolderName => this.uploadFilesDepthFirst(ddsFolder.id, ddsFolder.kind, folderInfo.children[childFolderName], projectId, this.ddsFolderChildren[ddsFolder.name]));
+                                        folderInfo.files.map(file => {
+                                            this.ddsFolderChildren[ddsFolder.name].map((child)=>{
+                                                const date = child.audit.last_updated_on !== null ? new Date(child.audit.last_updated_on) : new Date(child.audit.created_on);
+                                                const lastUpdated = date.getTime();
+                                                const fileId = child.kind === 'dds-file' && child.name === file.file.name ? child.id : null;
+                                                if(!this.completedFiles.includes(child.id) && child.kind === 'dds-file' && lastUpdated < file.file.lastModified) {
+                                                    this.startUpload(projectId, file.file, ddsFolder.id, ddsFolder.kind, null, fileId, this.tagsToAdd);
+                                                }
+                                                this.completedFiles.push(child.id);
+                                            })
+                                        });
+                                    }).catch(ex =>this.handleErrors(ex))
+                        }).catch((ex) => {
+                            this.addToast('Failed to add a new folder');
+                            this.handleErrors(ex)
+                        })
+                }
+            });
+        } else {
+            this.transportLayer.addFolder(parentId, parentKind, folderInfo.name)
+                .then()
+                .then(response => response.json())
+                .then((ddsFolder) => {
+                    Object.keys(folderInfo.children).forEach(childFolderName => this.uploadFilesDepthFirst(ddsFolder.id, ddsFolder.kind, folderInfo.children[childFolderName], projectId, this.listItems));
+                    folderInfo.files.map(file => {
+                        this.startUpload(projectId, file.file, ddsFolder.id, ddsFolder.kind, null, null, this.tagsToAdd);
+                    });
+                }).catch((ex) => {
+                    this.addToast('Failed to add a new folder');
+                    this.handleErrors(ex)
+                })
+        }
     }
 
     @action removeFileFromUploadList(index) {
@@ -1067,6 +1108,8 @@ export class MainStore {
     }
 
     @action addFileSuccess(parentId, parentKind, uploadId, fileId) {
+        let id = this.currentLocation.id;
+        let path = this.currentLocation.path.includes('project') ? Path.PROJECT : Path.FOLDER;
         if (this.uploads.get(uploadId).tags.length) this.appendTags(fileId, 'dds-file', this.uploads.get(uploadId).tags);
         if (this.uploads.size === 1 && !this.isFolderUpload) {
             let path = parentKind === 'dds-project' ? Path.PROJECT : Path.FOLDER;
@@ -1074,8 +1117,6 @@ export class MainStore {
             this.getChildren(parentId, path);
         } else if (this.uploads.size === 1 && this.isFolderUpload) {
             this.isFolderUpload = false;
-            let id = this.currentLocation.id;
-            let path = this.currentLocation.path.includes('project') ? Path.PROJECT : Path.FOLDER;
             this.getChildren(id, path);
         }
         if(this.uploads.has(uploadId)) this.uploads.delete(uploadId);
@@ -1083,6 +1124,7 @@ export class MainStore {
         if(this.uploads.size < 1) {
            if(this.hideUploadProgress) this.hideUploadProgress = false;
            this.totalUploads = {inProcess: 0, complete: 0};
+           this.completedFiles = [];
         }
     }
 
@@ -1090,7 +1132,7 @@ export class MainStore {
         this.transportLayer.addFileVersion(uploadId, label, fileId)
             .then(this.checkResponse)
             .then(response => response.json())
-            .then((json) => {
+            .then(() => {
                 this.addToast('Created New File Version!');
                 this.addFileVersionSuccess(fileId, uploadId)
             }).catch((ex) => {
@@ -1105,6 +1147,7 @@ export class MainStore {
         if(location.href.includes(id)) this.getEntity(id, Path.FILE);
         this.getFileVersions(id);
         if (this.uploads.has(uploadId)) this.uploads.delete(uploadId);
+        this.completedFiles = [];
     }
 
     @action getFileVersions(id) {
@@ -1173,10 +1216,11 @@ export class MainStore {
 
 
     @action getChildren(id, path, page) {
+        let perPage = '25';
         if(this.listItems.length && page === null) this.listItems = [];
         this.loading = true;
         if (page == null) page = 1;
-        this.transportLayer.getChildren(id, path, page)
+        this.transportLayer.getChildren(id, path, page, perPage)
             .then(this.checkResponse)
             .then((response) => {
                 const results = response.json();
