@@ -173,7 +173,6 @@ export class MainStore {
         this.warnUserBeforeLeavingPage = false;
 
         this.hierarchy = {};
-        this.children = [];
         this.ddsFolderChildren = {};
 
         this.completedFiles = [];
