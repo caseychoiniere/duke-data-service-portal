@@ -39,6 +39,7 @@ class VersionUpload extends React.Component {
                     actions={standardActions}
                     onRequestClose={this.handleClose.bind(this)}
                     open={open}>
+                    <div className="mdl-cell mdl-cell--6-col" style={{margin: '0 auto'}}>
                     <form action='#' id='newFileForm'>
                         <div className="mdl-cell mdl-cell--6-col mdl-textfield mdl-textfield--file">
                             <textarea className="mdl-textfield__input mdl-color-text--grey-800" placeholder="File" type="text" ref={(input) => this.fileList = input} rows="3" readOnly></textarea>
@@ -51,10 +52,12 @@ class VersionUpload extends React.Component {
                             style={styles.textStyles}
                             hintText="Optional Label"
                             floatingLabelText="Label"
+                            floatingLabelStyle={{color: Color.dkGrey}}
                             ref={(input) => this.labelText = input}
                             type="text"
                             multiLine={true}/> <br/>
                     </form>
+                    </div>
                 </Dialog>
             </div>
         );
@@ -63,9 +66,9 @@ class VersionUpload extends React.Component {
     handleUploadButton(fileId, parentId, projectId, parentKind) {
         if (this.fileInput.value) {
             let fileList = this.fileInput.files;
-            for (var i = 0; i < fileList.length; i++) {
+            for (let i = 0; i < fileList.length; i++) {
                 let blob = fileList[i];
-                let label = this.labelText.getValue();
+                let label = this.labelText.getValue() && this.labelText.getValue() !== '' ? this.labelText.getValue() : null;
                 mainStore.startUpload(projectId, blob, parentId, parentKind, label, fileId);
                 mainStore.toggleModals('newVersionModal');
             }
@@ -76,10 +79,11 @@ class VersionUpload extends React.Component {
 
     handleFileName() {
         let fList = [];
+        let fileList;
         let fl = this.fileInput.files;
-        for (var i = 0; i < fl.length; i++) {
+        for (let i = 0; i < fl.length; i++) {
             fList.push(fl[i].name);
-            var fileList = fList.toString().split(',').join(', ');
+            fileList = fList.toString().split(',').join(', ');
         }
         this.fileList.value = 'Preparing to upload: ' + fileList;
     }
@@ -93,7 +97,7 @@ const styles = {
     fileUpload: {
         float: 'right',
         position: 'relative',
-        margin: '12px 8px 0px 0px'
+        margin: '12px 8px 0px 0px',
     },
     iconColor: {
         color: Color.pink
@@ -106,7 +110,8 @@ const styles = {
     textStyles: {
         minWidth: '48%',
         textAlign: 'left',
-        fontColor: Color.dkBlue
+        fontColor: Color.dkBlue,
+        width: 286
     },
     floatingButton: {
         position: 'absolute',
