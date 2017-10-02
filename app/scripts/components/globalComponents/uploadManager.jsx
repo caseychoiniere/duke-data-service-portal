@@ -49,8 +49,8 @@ class UploadManager extends React.Component {
 
         }) : null;
         let rejectedFiles = filesRejectedForUpload.length ? filesRejectedForUpload.map((file)=>{
-            return <div key={BaseUtils.generateUniqueKey()} className="mdl-cell mdl-cell--6-col" style={styles.rejectedFileList}>
-                    {file.name+' exceeds the maximum size of 5 GB.'}
+            return <div key={BaseUtils.generateUniqueKey()} className="mdl-cell mdl-cell--12-col" style={styles.rejectedFileList}>
+                    {file.name+' exceeds the maximum size of 5 GB.'}<br/>{'This file cannot be uploaded through the web portal.'}
                 </div>
         }) : null;
 
@@ -73,11 +73,11 @@ class UploadManager extends React.Component {
                         <div className="mdl-cell mdl-cell--12-col mdl-color-text--grey-600" style={styles.fileInputContainer}>
                             <div className="mdl-cell mdl-cell--6-col" style={styles.dropzoneContainer}>
                                 <DropZone />
-                                {filesToUpload.length ? <h6 className="mdl-color-text--grey-600" style={styles.fileListHeader}>Preparing to upload {filesToUpload.length} file{filesToUpload.length > 1 ? 's' : ''}</h6> : null}
                             </div>
-                            <div className="mdl-cell mdl-cell--6-col" style={{margin: '0 auto'}}>
-                            {files}
-                            {rejectedFiles}
+                            <div className="mdl-cell mdl-cell--6-col" style={styles.fileList.wrapper}>
+                                {filesToUpload.length ? <h6 className="mdl-color-text--grey-600" style={styles.fileListHeader}>Preparing to upload {filesToUpload.length} file{filesToUpload.length > 1 ? 's' : ''}</h6> : null}
+                                {files}
+                                {rejectedFiles}
                             </div>
                         </div>
                         <div className="mdl-cell mdl-cell--12-col mdl-color-text--grey-800" style={styles.wrapper}>
@@ -184,7 +184,7 @@ class UploadManager extends React.Component {
             if(!isFolderUpload) {
                 for (let i = 0; i < filesToUpload.length; i++) {
                     let blob = filesToUpload[i];
-                    mainStore.startUpload(projectId, blob, parentId, parentKind, null, null, tagsToAdd);
+                    mainStore.sliceFiles(projectId, blob, parentId, parentKind, null, null, tagsToAdd);
                     mainStore.defineTagsToAdd([]);
                     mainStore.processFilesToUpload([], []);
                 }
@@ -290,11 +290,16 @@ const styles = {
         color: Color.blue,
         padding: 5,
         float: 'left',
-        minWidth: '50%'
+        minWidth: '50%',
+        wrapper: {
+            margin: '0 auto'
+        }
     },
     fileListHeader: {
         textAlign: 'left',
-        paddingLeft: 5
+        paddingLeft: 5,
+        margin: '0 auto',
+        marginTop: 15
     },
     fileUpload: {
         float: 'right',
@@ -329,11 +334,14 @@ const styles = {
         textAlign: 'center'
     },
     rejectedFileList: {
-        margin: '1.5px auto',
+        margin: '2px auto',
         textAlign: 'left',
         padding: 5,
         color: Color.white,
-        backgroundColor: Color.red
+        backgroundColor: Color.ltRed,
+        border: 'solid 2px '+ Color.ltPink,
+        float: 'left',
+        minWidth: '50%'
     },
     tagLabels: {
         margin: 3,

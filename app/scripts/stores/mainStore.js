@@ -8,6 +8,7 @@ import BaseUtils from '../util/baseUtils.js';
 import { StatusEnum } from '../enum';
 import { Kind, Path } from '../util/urlEnum';
 import { checkStatus, checkStatusAndConsistency } from '../util/fetchUtil';
+import pako from 'pako';
 
 export class MainStore {
     @observable agents
@@ -93,6 +94,9 @@ export class MainStore {
     @observable users
     @observable userKey
     @observable versionModal
+
+
+    @observable compressedFile
 
     constructor() {
         this.agents = [];
@@ -184,6 +188,9 @@ export class MainStore {
         this.warnUserBeforeLeavingPage = false;
 
         this.transportLayer = transportLayer;
+
+
+        this.compressedFile = null;
     }
 
     checkResponse(response) {
@@ -838,27 +845,88 @@ export class MainStore {
         });
     }
 
+    @action sliceFiles(projId, blob, parentId, parentKind, label, fileId, tags) {
+        let slicedFile = null,
+            file = [],
+            BYTES_PER_CHUNK, SIZE, start, end;
+        BYTES_PER_CHUNK =  25000000;
+        SIZE = blob.size;
+        start = 0;
+        end = BYTES_PER_CHUNK;
+
+        const fileReader = new FileReader();
+        while (start <= SIZE) {
+            slicedFile = blob.slice(start, end);
+            file.push(slicedFile);
+            start = end;
+            end = start + BYTES_PER_CHUNK;
+        }
+        fileReader.onload = function () {
+            mainStore.compressFile(projId, blob, file, parentId, parentKind, label, fileId, tags)
+        };
+        fileReader.onerror = function (e) {
+            mainStore.handleErrors(e.target.error);
+            console.log("error", e);
+            console.log(e.target.error.message);
+        };
+        fileReader.readAsArrayBuffer(slicedFile);
+    }
+
+    @action compressFile(projId, blob, slicedFile, parentId, parentKind, label, fileId, tags) {
+        let file = slicedFile;
+        let count = file.length;
+        const deflate = new pako.Deflate({level: 1, chunkSize: 25000000});
+        file.forEach(() => {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                let lastChunk;
+                const chunk = this.result;
+                    count--;
+                    file.shift();
+                    lastChunk = !file.length;
+                    deflate.push(chunk, lastChunk);
+                    if (count === 0) {
+                        mainStore.compressedFile = new Blob([deflate.result]);
+                        {/* //Todo: Testing file unpacking to make sure files are not corrupted
+                          } mainStore.compressedFile = deflate.result;
+                        try {
+                        // let file = pako.inflate(mainStore.compressedFile);
+                        //     file = new Blob([file])
+                        //     mainStore.compressedFile = file;
+                        } catch (err) {
+                            console.log(err);
+                        }*/}
+                        mainStore.startUpload(projId, blob, parentId, parentKind, label, fileId, tags)
+                    }
+
+                if (deflate.err) {
+                    throw new Error(deflate.err);
+                }
+            };
+            reader.readAsArrayBuffer(slicedFile[0]);
+        })
+    }
+
     @action startUpload(projId, blob, parentId, parentKind, label, fileId, tags) {
         let chunkNum = 0,
             fileName = blob.name,
             contentType = blob.type,
             slicedFile = null,
             BYTES_PER_CHUNK, SIZE, start, end;
-            BYTES_PER_CHUNK =  2500000;
-            SIZE = blob.size;
+            BYTES_PER_CHUNK =  25000000;
+            SIZE = mainStore.compressedFile.size;
             start = 0;
             end = BYTES_PER_CHUNK;
 
         const retryArgs = [projId, blob, parentId, parentKind, label, fileId, tags];
         const fileReader = new FileReader();
-
         let details = {
             name: fileName,
             label: label,
             tags: tags,
             fileId: fileId,
             size: SIZE,
-            blob: blob,
+            blob: mainStore.compressedFile,
             parentId: parentId,
             parentKind: parentKind,
             projectId: projId,
@@ -867,7 +935,7 @@ export class MainStore {
         };
         // describe chunk details
         while (start <= SIZE) {
-            slicedFile = blob.slice(start, end);
+            slicedFile = mainStore.compressedFile.slice(start, end);
             details.chunks.push({
                 number: chunkNum,
                 start: start,
@@ -983,7 +1051,7 @@ export class MainStore {
                 blob = blob.getBlob();
             }
             let worker = new Worker(URL.createObjectURL(blob));
-            let chunksize = 2500000;
+            let chunksize = 25000000;
             let f = file.blob; // FileList object
             let chunks = Math.ceil(f.size / chunksize),
                 chunkTasks = [];

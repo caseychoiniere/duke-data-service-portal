@@ -21,7 +21,12 @@ class DropZone extends React.Component {
             maxFilesize: 5000000000,
             previewTemplate: '<span></span>',
             dragenter: () => changeColor(),
-            addedfile: (file) => { if(file.size < 5000000000) mainStore.processFilesToUpload([file], []) },
+            addedfile: (file) => { if(file.size < 5000000000) {
+                    mainStore.processFilesToUpload([file], [])
+                } else {
+                    mainStore.processFilesToUpload([], [file])
+                }
+            },
             dragleave: () => changeColor(),
             drop: () => changeColor(),
             dragleave: () => changeColor(),
